@@ -1,0 +1,17 @@
+{
+  "name": "Mein Python Container",
+  "context": ".",
+  "dockerFile": "Dockerfile",
+  "workspaceFolder": "/workspace",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ]
+    }
+  }
+}
