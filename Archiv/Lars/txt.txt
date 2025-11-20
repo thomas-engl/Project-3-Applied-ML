@@ -1,4 +1,4 @@
-pip install matplotlib numpy
-pip install torch
-
 Ja gekliuckt, bei Jupiter notebook ausführen
+
+pip install pyvista
+pip install torch
