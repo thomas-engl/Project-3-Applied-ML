@@ -35,19 +35,19 @@ class FFNN(nn.Module):
 
 
 class heat_nn():
-    def __init__(self, layers, activations, dim):
+    def __init__(self, layers, activations, dim, u_0):
         self.net = FFNN(layers, activations, dim=dim)
+        self.u_0 = u_0
     
     def trial_solution(self, *args):
         t = args[-1]
         x = args[:-1]
         L = 1
         N = self.net(torch.cat(args, dim=1))
-        # f = ...
         trial_sol = t * N
         for d in x:
             trial_sol *= d * (L - d)
-        return (1-t) * f + trial_sol
+        return (1-t) * self.u_0 + trial_sol
     
     def pde_residual(self, *args):
         t = args[-1]
