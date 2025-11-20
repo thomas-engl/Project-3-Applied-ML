@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+
 class FFNN(nn.Module):
     def __init__(self, layers, activations, dim):
         super().__init__()
@@ -18,7 +19,7 @@ class FFNN(nn.Module):
         self.linears = nn.ModuleList(input_layer + linears)
 
         # Store activations, allow None for identity
-        self.activations = [lambda x: x]
+        self.activations = []
         for act in activations:
             if act is None:
                 self.activations.append(lambda x: x)
@@ -26,14 +27,62 @@ class FFNN(nn.Module):
                 self.activations.append(act)
 
     def forward(self, x):
-        # Apply activation for the input layer first
-        x = self.activations[0](x)
-
         # Apply linear layers and their activations
-        for linear, activation in zip(self.linears, self.activations[1:]):
+        for linear, activation in zip(self.linears, self.activations):
             x = activation(linear(x))
 
         return x
+
+
+class heat_nn():
+    def __init__(self, layers, activations, dim):
+        self.net = FFNN(layers, activations, dim=dim)
+    
+    def trial_solution(self, *args):
+        t = args[-1]
+        x = args[:-1]
+        L = 1
+        N = self.net(torch.cat(args, dim=1))
+        # f = ...
+        trial_sol = t * N
+        for d in x:
+            trial_sol *= d * (L - d)
+        return (1-t) * f + trial_sol
+    
+    def pde_residual(self, *args):
+        t = args[-1]
+        x = args[:-1]
+
+        t.requires_grad = True
+        for d in x:
+            d.requires_grad = True
+        
+        u = self.trial_solution(*args)
+
+        u_t = torch.autograd.grad(u, t, grad_outputs=torch.ones_like(u), create_graph=True)[0]
+        u_xx_sum = 0
+        for d in x:
+            u_x = torch.autograd.grad(u, d, grad_outputs=torch.ones_like(u), create_graph=True)[0]
+            u_xx = torch.autograd.grad(u_x, d, grad_outputs=torch.ones_like(u), create_graph=True)[0]
+            u_xx_sum += u_xx
+        
+        return u_t - u_xx_sum  # Heat equation: u_t - \Delta u = 0
+    
+    def loss_fn(self, *args):
+        f = self.pde_residual(*args)
+        return torch.mean(f**2)
+    
+    def train(self, *args, lr, weight_decay, epochs, print_epochs=-1):
+        optimizer = torch.optim.Adam(self.net.parameters(), lr=lr, weight_decay=weight_decay)
+        for epoch in range(epochs):
+            optimizer.zero_grad()
+            loss = self.loss_fn(*args)
+            loss.backward()
+            optimizer.step()
+
+            if epoch % print_epochs == 0 or epoch == epochs - 1:
+                print(f"Epoch {epoch}, Loss: {loss.item():.6f}")
+
 
 
 class heat_1d_nn():
