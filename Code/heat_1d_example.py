@@ -14,7 +14,7 @@ pde_nn = heat_1d_nn(layers, activations)
 N_colloc = 10000
 x_colloc = torch.rand(N_colloc, 1)
 t_colloc = torch.rand(N_colloc, 1)
-pde_nn.train(x_colloc, t_colloc, lr=1e-3, weight_decay=0, epochs =10, printer=True)
+pde_nn.train(x_colloc, t_colloc, lr=1e-3, weight_decay=0, epochs =5000, printer=True)
 #proper result for epochs =5000
 
 x_test = torch.linspace(0,1,100).view(-1,1)
