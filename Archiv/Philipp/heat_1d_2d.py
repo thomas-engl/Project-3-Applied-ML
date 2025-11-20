@@ -94,7 +94,7 @@ class heat_2d_nn():
     # Trial solution for 1d heat equation
     def trial_solution(self, x, y, t):
         
-        N = self.net(torch.cat([x, t], dim=1))
+        N = self.net(torch.cat([x, y, t], dim=1))
         # initial condition
         u_0 = torch.sin(torch.pi * x) * torch.sin(torch.pi * y) + torch.sin(
                 2 * torch.pi * x) * torch.sin(4 * torch.pi * y)
