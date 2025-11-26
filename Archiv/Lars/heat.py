@@ -36,6 +36,7 @@ class FFNN(nn.Module):
 
 class heat_nn():
     def __init__(self, layers, activations, dim, u_0):
+        self.u_analytic = None
         self.net = FFNN(layers, activations, dim=dim)
         self.dim = dim
         self.u_0 = u_0
@@ -99,6 +100,20 @@ class heat_nn():
         self.x = x_colloc_list
         self.t = t_colloc
         self.args = x_colloc_list + [t_colloc]
+    
+    def set_analytic_solution(self, u_analytic):
+        self.u_analytic = u_analytic
+    
+    def mse(self):
+        if self.u_analytic is None:
+            raise ValueError("Analytic solution not set. Use set_analytic_solution method to set it.")
+
+        with torch.no_grad():
+            u_pred = self.trial_solution().detach().numpy()
+            u_exact = self.u_analytic(*self.x, self.t).detach().numpy()
+            mse = np.mean((u_pred - u_exact)**2)
+        
+        return mse
 
     def train(self, lr, weight_decay, epochs, print_epochs=-1):
         optimizer = torch.optim.Adam(self.net.parameters(), lr=lr, weight_decay=weight_decay)
@@ -109,4 +124,7 @@ class heat_nn():
             optimizer.step()
 
             if epoch % print_epochs == 0 or epoch == epochs - 1:
-                print(f"Epoch {epoch}, Loss: {loss.item():.6f}")
+                if self.u_analytic is not None:
+                    print(f"Epoch {epoch}, Loss: {loss.item():.6f}, MSE: {self.mse():.6f}")
+                else:
+                    print(f"Epoch {epoch}, Loss: {loss.item():.6f}")
