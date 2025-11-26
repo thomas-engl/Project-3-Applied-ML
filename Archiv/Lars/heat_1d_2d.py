@@ -40,43 +40,50 @@ class heat_nn():
         self.u_0 = u_0
     
     def trial_solution(self, *args):
-        t = args[-1]
-        x = args[:-1]
+        if args:
+            t = args[-1]
+            x = args[:-1]
+        else:
+            t = self.t
+            x = self.x
         L = 1
-        N = self.net(torch.cat(args, dim=1))
+        N = self.net(torch.cat(x + (t,), dim=1))
         trial_sol = t * N
         for d in x:
             trial_sol *= d * (L - d)
-        return (1-t) * self.u_0 + trial_sol
+        return (1-t) * self.u_0(*x) + trial_sol
     
-    def pde_residual(self, *args):
-        t = args[-1]
-        x = args[:-1]
+    def pde_residual(self):
 
-        t.requires_grad = True
-        for d in x:
+        self.t.requires_grad = True
+        for d in self.x:
             d.requires_grad = True
         
-        u = self.trial_solution(*args)
+        u = self.trial_solution()
 
-        u_t = torch.autograd.grad(u, t, grad_outputs=torch.ones_like(u), create_graph=True)[0]
+        u_t = torch.autograd.grad(u, self.t, grad_outputs=torch.ones_like(u), create_graph=True)[0]
         u_xx_sum = 0
-        for d in x:
-            u_x = torch.autograd.grad(u, d, grad_outputs=torch.ones_like(u), create_graph=True)[0]
-            u_xx = torch.autograd.grad(u_x, d, grad_outputs=torch.ones_like(u), create_graph=True)[0]
-            u_xx_sum += u_xx
+        for d in self.x:
+            u_d = torch.autograd.grad(u, d, grad_outputs=torch.ones_like(u), create_graph=True)[0]
+            u_dd = torch.autograd.grad(u_d, d, grad_outputs=torch.ones_like(u), create_graph=True)[0]
+            u_xx_sum += u_dd
         
         return u_t - u_xx_sum  # Heat equation: u_t - \Delta u = 0
     
-    def loss_fn(self, *args):
-        f = self.pde_residual(*args)
+    def loss_fn(self):
+        f = self.pde_residual()
         return torch.mean(f**2)
     
-    def train(self, *args, lr, weight_decay, epochs, print_epochs=-1):
+    def set_data(self, *args):
+        self.args = args
+        self.t = args[-1]
+        self.x = args[:-1]
+
+    def train(self, lr, weight_decay, epochs, print_epochs=-1):
         optimizer = torch.optim.Adam(self.net.parameters(), lr=lr, weight_decay=weight_decay)
         for epoch in range(epochs):
             optimizer.zero_grad()
-            loss = self.loss_fn(*args)
+            loss = self.loss_fn()
             loss.backward()
             optimizer.step()
 
