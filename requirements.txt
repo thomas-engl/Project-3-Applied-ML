@@ -47,6 +47,7 @@ nvidia-nvjitlink-cu12==12.8.93
 nvidia-nvshmem-cu12==3.3.20
 nvidia-nvtx-cu12==12.8.90
 packaging==24.1
+pandas==2.3.3
 parso==0.8.4
 pathspec==0.12.1
 pexpect==4.9.0
@@ -61,6 +62,7 @@ pycparser==2.22
 Pygments==2.18.0
 pyparsing==3.2.5
 python-dateutil==2.9.0.post0
+pytz==2025.2
 pyvista==0.46.4
 pyzmq==27.1.0
 requests==2.32.5
@@ -78,6 +80,7 @@ tornado==6.5.2
 traitlets==5.14.3
 triton==3.5.1
 typing_extensions==4.15.0
+tzdata==2025.2
 urllib3==2.5.0
 vtk==9.5.2
 wcwidth==0.2.13
