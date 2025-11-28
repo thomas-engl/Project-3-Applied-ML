@@ -2,3 +2,5 @@ Ja gekliuckt, bei Jupiter notebook ausführen
 
 pip install pyvista
 pip install torch
+pip install ImageIO
+pip install scikit-learn
