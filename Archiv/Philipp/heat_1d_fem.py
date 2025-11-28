@@ -71,7 +71,7 @@ bc = fem.dirichletbc(value=ScalarType(0), dofs=dofs, V=V)
 # this ensures that the development of the solution in time can be
 # observed well in the animation
 
-h = 0.001
+h = 0.005
 
 x = ufl.SpatialCoordinate(msh)
 
@@ -80,7 +80,7 @@ x = ufl.SpatialCoordinate(msh)
 ### u_0 (x) = sin ( pi * x )
 ### create a ufl expression and transform it into a fem function later
 
-u0 = ufl.sin(np.pi * x[0]) 
+u0 = ufl.sin(np.pi * x[0]) + ufl.sin(4 * np.pi * x[0])
 
 # right hand side
 # not necessary, if f = 0, but we want to be able to use other RHS, too
@@ -94,7 +94,7 @@ f = fem.Constant(msh, 0.0)
 u_n = fem.Function(V)
 u0_ = fem.Expression(u0, V.element.interpolation_points())
 u_n.interpolate(u0_)
-lst_solutions = [u_n]
+lst_solutions = [u_n.copy()]
 
 # diffusivity coefficient \kappa
 
@@ -149,4 +149,49 @@ for i in range(num_steps):
     lst_solutions.append(u_n.copy())
 
 
-print(lst_solutions[0].x.array)
+""" so far only trials """
+
+### ===============================================================================
+### Create an animation using matplotlib
+### also plot the analytic solution for comparison
+
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+### analytic solution
+def u(t, x): 
+    return np.exp(- kappa * np.pi**2 * t) * np.sin(np.pi * x) + np.exp(
+        - 16 * kappa * np.pi**2 * t) * np.sin(4 * np.pi * x)
+# vectorize the function in the spatial coordinate x
+u_vec = np.vectorize(u, excluded='t')
+
+x = np.linspace(0, 1, 129)
+fig, ax = plt.subplots()
+
+line_1, = ax.plot(x, lst_solutions[0].x.array, color='blue', label='FE solution')
+line_2, = ax.plot(x, u_vec(0, x), color='red', label='analytic solution')
+ax.set_ylim(-0.75, 2.0)
+ax.set_xlabel(r'$x$')
+ax.set_ylabel(r'$u(t, x)$')
+ax.legend(loc='upper right')
+time_count = ax.text(0.1, 0.9, 't=0.000', transform=ax.transAxes)
+
+def update(frame):
+    if frame <= 10:
+        ### keep initial solution for first 10 frames
+        y = lst_solutions[0].x.array
+        z = u_vec(0, x)
+        line_1.set_ydata(y)
+        line_2.set_ydata(z)
+        time_count.set_text('t=0.000')
+    else:
+        y = lst_solutions[frame - 10].x.array
+        z = u_vec((frame - 10) * h, x)
+        line_1.set_ydata(y)
+        line_2.set_ydata(z)
+        time_count.set_text('t={:.3f}'.format((frame - 10) * h))
+    return line_1, line_2, time_count
+
+ani = FuncAnimation(fig, update, frames=len(lst_solutions) + 10, interval=100)
+ani.save('1d_heat_equation.gif', writer='pillow')
+plt.show()
