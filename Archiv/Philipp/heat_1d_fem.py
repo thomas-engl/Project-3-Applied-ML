@@ -18,7 +18,7 @@ from mpi4py import MPI
 import time
 
 
-### copied this from the dolfinx tutorial
+### copied this block from the dolfinx tutorial
 
 if importlib.util.find_spec("petsc4py") is not None:
     import dolfinx
@@ -136,8 +136,13 @@ for i in range(num_steps):
     ### define the linear problem
     ### a(u, v) = l(v) for all v in H^1_0 ( \Omega )
 
+    # use GMRES (generalised minimal residual) to solve the linear problem
+    # incomplete LU decomposition as precoditioner
     problem = LinearProblem(a, l, bcs=[bc], petsc_options={
-                            "ksp_type": "preonly", "pc_type": "lu"})
+        "ksp_type": "gmres",
+        "ksp_rtol": 1e-8,
+        "ksp_max_it": 2000,
+        "pc_type": "ilu"})
     uh = problem.solve()
     
     # set initial condition of next time step to current solution
@@ -149,7 +154,45 @@ for i in range(num_steps):
     lst_solutions.append(u_n.copy())
 
 
-""" so far only trials """
+### ===============================================================================
+### analytic solution
+### u(t, x) = exp(- k pi^2 t) sin(pi x) + exp(- 16 k pi^2 t) sin(4 pi x)
+
+# create a normal python function since this easier to plot
+def u(t, x): 
+    return np.exp(- kappa * np.pi**2 * t) * np.sin(np.pi * x) + np.exp(
+        - 16 * kappa * np.pi**2 * t) * np.sin(4 * np.pi * x)
+# vectorize the function in the spatial coordinate x
+u_vec = np.vectorize(u, excluded='t')
+
+### ================================================================================
+### compute the L^2 error
+### do this for every time step separately
+
+# we have to construct a ufl expression again
+# Function space for exact solution
+V_exact = fem.functionspace(msh, ("Lagrange", 5))
+L_2_errs = []
+
+# leave out 0-th time step since solution is exact by definition
+for i in range(1, len(lst_solutions)):
+    u_exact = fem.Function(V_exact)
+    # t = i * h
+    u_e = ufl.exp(- kappa * np.pi**2 * i * h) * ufl.sin(np.pi * x[0]) + ufl.exp(
+        - 16 * kappa * np.pi**2 * i * h) * ufl.sin(4 * np.pi * x[0])
+    u_exact_expr = fem.Expression(u_e, V_exact.element.interpolation_points())
+    u_exact.interpolate(u_exact_expr)
+
+    # L2 errors
+    L_2_err = np.sqrt(
+        msh.comm.allreduce(
+            fem.assemble_scalar(fem.form((lst_solutions[i] - u_exact) ** 2 * ufl.dx)), 
+            op=MPI.SUM
+            )
+        )
+    L_2_errs.append(L_2_err)
+
+print("list of L^2 errors: ", L_2_errs)
 
 ### ===============================================================================
 ### Create an animation using matplotlib
@@ -158,22 +201,17 @@ for i in range(num_steps):
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-### analytic solution
-def u(t, x): 
-    return np.exp(- kappa * np.pi**2 * t) * np.sin(np.pi * x) + np.exp(
-        - 16 * kappa * np.pi**2 * t) * np.sin(4 * np.pi * x)
-# vectorize the function in the spatial coordinate x
-u_vec = np.vectorize(u, excluded='t')
-
 x = np.linspace(0, 1, 129)
 fig, ax = plt.subplots()
 
+# plot FEM and analytic solution together
 line_1, = ax.plot(x, lst_solutions[0].x.array, color='blue', label='FE solution')
-line_2, = ax.plot(x, u_vec(0, x), color='red', label='analytic solution')
+line_2, = ax.plot(x, u_vec(0, x), '--', color='red', label='analytic solution')
 ax.set_ylim(-0.75, 2.0)
 ax.set_xlabel(r'$x$')
 ax.set_ylabel(r'$u(t, x)$')
 ax.legend(loc='upper right')
+# add text which shows the current time step in each frame
 time_count = ax.text(0.1, 0.9, 't=0.000', transform=ax.transAxes)
 
 def update(frame):
