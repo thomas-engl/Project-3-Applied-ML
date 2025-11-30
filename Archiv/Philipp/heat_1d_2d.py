@@ -161,15 +161,18 @@ class heat_2d_nn():
     """
     def __init__(self, layers, activations):
         self.net = FFNN(layers, activations, dim=2)
+        self.time_scale = nn.Parameter(torch.tensor(1.0))
+        self.space_scale = nn.Parameter(torch.tensor(1.0))
 
     # Trial solution for 1d heat equation
     def trial_solution(self, x, y, t):
-        
-        N = self.net(torch.cat([x, y, t], dim=1))
+        x_scaled, y_scaled = 2*x - 1, 2*y - 1
+        t_scaled = torch.exp(self.time_scale) * t
+        N = self.net(torch.cat([x_scaled, y_scaled, t_scaled], dim=1))
         # initial condition
         u_0 = torch.sin(torch.pi * x) * torch.sin(torch.pi * y) + torch.sin(
                 2 * torch.pi * x) * torch.sin(4 * torch.pi * y)
-        return u_0 + x * (1 - x) * y * (1 - y) * t * N
+        return torch.exp(-t) * u_0 + x * (1 - x) * y * (1 - y) * t * N
 
     # Residuals for 1d heat equation
     def pde_residual(self, x, y, t):
@@ -195,7 +198,8 @@ class heat_2d_nn():
 
     def train(self, x_colloc, y_colloc, t_colloc, lr, weight_decay, epochs, print_epochs = 500):
         #weight_decay is for Adam not the same as L2 regularization but it is recommended to use
-        optimizer = torch.optim.Adam(self.net.parameters(), lr=lr, weight_decay = weight_decay)
+        optimizer = torch.optim.Adam(list(self.net.parameters()) + [self.time_scale, 
+                        self.space_scale], lr=lr, weight_decay = weight_decay)
         for epoch in range(epochs):
             optimizer.zero_grad()
             loss = self.loss_fn(x_colloc, y_colloc, t_colloc)
@@ -204,4 +208,19 @@ class heat_2d_nn():
 
             if epoch % print_epochs == 0 or epoch == epochs - 1:
                 print(f"Epoch {epoch}, Loss: {loss.item():.6f}")
+
+    def train_lbfgs(self, x_colloc, t_colloc, lr, epochs=50, max_iter = 50):
+        optimizer = torch.optim.LBFGS(list(self.net.parameters()) + [self.time_scale,
+                        self.space_scale], lr=lr, max_iter = max_iter)
+
+        for epoch in range(epochs):
+            def closure():
+                optimizer.zero_grad()
+                loss = self.loss_fn(x_colloc, t_colloc)
+                loss.backward()
+                return loss
+
+            optimizer.step(closure)
+            print(f"LBFGS Epoch {epoch+1}, Loss: {closure().item():.6f}")
+
 
