@@ -18,7 +18,7 @@ from mpi4py import MPI
 import time
 
 
-### copied this from the dolfinx tutorial
+### copied this block from the dolfinx tutorial
 
 if importlib.util.find_spec("petsc4py") is not None:
     import dolfinx
@@ -71,7 +71,7 @@ bc = fem.dirichletbc(value=ScalarType(0), dofs=dofs, V=V)
 # this ensures that the development of the solution in time can be
 # observed well in the animation
 
-h = 0.001
+h = 0.005
 
 x = ufl.SpatialCoordinate(msh)
 
@@ -80,7 +80,7 @@ x = ufl.SpatialCoordinate(msh)
 ### u_0 (x) = sin ( pi * x )
 ### create a ufl expression and transform it into a fem function later
 
-u0 = ufl.sin(np.pi * x[0]) 
+u0 = ufl.sin(np.pi * x[0]) + ufl.sin(4 * np.pi * x[0])
 
 # right hand side
 # not necessary, if f = 0, but we want to be able to use other RHS, too
@@ -94,7 +94,7 @@ f = fem.Constant(msh, 0.0)
 u_n = fem.Function(V)
 u0_ = fem.Expression(u0, V.element.interpolation_points())
 u_n.interpolate(u0_)
-lst_solutions = [u_n]
+lst_solutions = [u_n.copy()]
 
 # diffusivity coefficient \kappa
 
@@ -136,8 +136,13 @@ for i in range(num_steps):
     ### define the linear problem
     ### a(u, v) = l(v) for all v in H^1_0 ( \Omega )
 
+    # use GMRES (generalised minimal residual) to solve the linear problem
+    # incomplete LU decomposition as precoditioner
     problem = LinearProblem(a, l, bcs=[bc], petsc_options={
-                            "ksp_type": "preonly", "pc_type": "lu"})
+        "ksp_type": "gmres",
+        "ksp_rtol": 1e-8,
+        "ksp_max_it": 2000,
+        "pc_type": "ilu"})
     uh = problem.solve()
     
     # set initial condition of next time step to current solution
@@ -149,4 +154,82 @@ for i in range(num_steps):
     lst_solutions.append(u_n.copy())
 
 
-print(lst_solutions[0].x.array)
+### ===============================================================================
+### analytic solution
+### u(t, x) = exp(- k pi^2 t) sin(pi x) + exp(- 16 k pi^2 t) sin(4 pi x)
+
+# create a normal python function since this easier to plot
+def u(t, x): 
+    return np.exp(- kappa * np.pi**2 * t) * np.sin(np.pi * x) + np.exp(
+        - 16 * kappa * np.pi**2 * t) * np.sin(4 * np.pi * x)
+# vectorize the function in the spatial coordinate x
+u_vec = np.vectorize(u, excluded='t')
+
+### ================================================================================
+### compute the L^2 error
+### do this for every time step separately
+
+# we have to construct a ufl expression again
+# Function space for exact solution
+V_exact = fem.functionspace(msh, ("Lagrange", 5))
+L_2_errs = []
+
+# leave out 0-th time step since solution is exact by definition
+for i in range(1, len(lst_solutions)):
+    u_exact = fem.Function(V_exact)
+    # t = i * h
+    u_e = ufl.exp(- kappa * np.pi**2 * i * h) * ufl.sin(np.pi * x[0]) + ufl.exp(
+        - 16 * kappa * np.pi**2 * i * h) * ufl.sin(4 * np.pi * x[0])
+    u_exact_expr = fem.Expression(u_e, V_exact.element.interpolation_points())
+    u_exact.interpolate(u_exact_expr)
+
+    # L2 errors
+    L_2_err = np.sqrt(
+        msh.comm.allreduce(
+            fem.assemble_scalar(fem.form((lst_solutions[i] - u_exact) ** 2 * ufl.dx)), 
+            op=MPI.SUM
+            )
+        )
+    L_2_errs.append(L_2_err)
+
+print("list of L^2 errors: ", L_2_errs)
+
+### ===============================================================================
+### Create an animation using matplotlib
+### also plot the analytic solution for comparison
+
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+x = np.linspace(0, 1, 129)
+fig, ax = plt.subplots()
+
+# plot FEM and analytic solution together
+line_1, = ax.plot(x, lst_solutions[0].x.array, color='blue', label='FE solution')
+line_2, = ax.plot(x, u_vec(0, x), '--', color='red', label='analytic solution')
+ax.set_ylim(-0.75, 2.0)
+ax.set_xlabel(r'$x$')
+ax.set_ylabel(r'$u(t, x)$')
+ax.legend(loc='upper right')
+# add text which shows the current time step in each frame
+time_count = ax.text(0.1, 0.9, 't=0.000', transform=ax.transAxes)
+
+def update(frame):
+    if frame <= 10:
+        ### keep initial solution for first 10 frames
+        y = lst_solutions[0].x.array
+        z = u_vec(0, x)
+        line_1.set_ydata(y)
+        line_2.set_ydata(z)
+        time_count.set_text('t=0.000')
+    else:
+        y = lst_solutions[frame - 10].x.array
+        z = u_vec((frame - 10) * h, x)
+        line_1.set_ydata(y)
+        line_2.set_ydata(z)
+        time_count.set_text('t={:.3f}'.format((frame - 10) * h))
+    return line_1, line_2, time_count
+
+ani = FuncAnimation(fig, update, frames=len(lst_solutions) + 10, interval=100)
+ani.save('1d_heat_equation.gif', writer='pillow')
+plt.show()
