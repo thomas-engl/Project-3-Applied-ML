@@ -61,19 +61,28 @@ class heat_nn():
         for d in self.x:
             d.requires_grad = True
         
+        # print("required grads set", self.x[0].requires_grad)
+        
         u = self.trial_solution()
 
-        u_t = torch.autograd.grad(u, self.t, grad_outputs=torch.ones_like(u), create_graph=True)[0]
+        # print("trial solution computed")
+
         u_xx_sum = 0
         for d in self.x:
-            u_d = torch.autograd.grad(u, d, grad_outputs=torch.ones_like(u), create_graph=True)[0]
-            u_dd = torch.autograd.grad(u_d, d, grad_outputs=torch.ones_like(u), create_graph=True)[0]
+            u_d = torch.autograd.grad(u, d, grad_outputs=torch.ones_like(u), create_graph=True, allow_unused=True)[0]
+            # print("u_d computed")
+            # Use ones_like(u_d) here so grad_outputs shape matches u_d
+            u_dd = torch.autograd.grad(u_d, d, grad_outputs=torch.ones_like(u_d), create_graph=True, allow_unused=True)[0]
+            #   print("u_dd computed")
             u_xx_sum += u_dd
         
+        u_t = torch.autograd.grad(u, self.t, grad_outputs=torch.ones_like(u), create_graph=True, allow_unused=True)[0]
+        # print("u_t computed")
         return u_t - u_xx_sum  # Heat equation: u_t - \Delta u = 0
     
     def loss_fn(self):
         f = self.pde_residual()
+        # print("pde residual computed")
         return torch.mean(f**2)
     
     def set_data(self, *args):
@@ -84,8 +93,8 @@ class heat_nn():
 
         x = []
         for d in args[:-1]:
-            x.append(np.linspace(0, 1, d))
-        t = np.linspace(0, 1, args[-1])
+            x.append(np.linspace(0, 1, d, dtype=np.float32))
+        t = np.linspace(0, 1, args[-1], dtype=np.float32)
 
         mesh = np.meshgrid(*x, t)
 
@@ -115,16 +124,22 @@ class heat_nn():
         
         return mse
 
-    def train(self, lr, weight_decay, epochs, print_epochs=-1):
+    def train(self, lr, weight_decay, epochs, print_epochs=0):
         optimizer = torch.optim.Adam(self.net.parameters(), lr=lr, weight_decay=weight_decay)
         for epoch in range(epochs):
+            # print(f"{epoch=}")
             optimizer.zero_grad()
+            # print("zeroed")
             loss = self.loss_fn()
+            # print("loss computed")
             loss.backward()
+            # print("backward done")
             optimizer.step()
+            # print("optimizer step done")
 
-            if epoch % print_epochs == 0 or epoch == epochs - 1:
-                if self.u_analytic is not None:
-                    print(f"Epoch {epoch}, Loss: {loss.item():.6f}, MSE: {self.mse():.6f}")
-                else:
-                    print(f"Epoch {epoch}, Loss: {loss.item():.6f}")
+            if print_epochs != 0:
+                if epoch % print_epochs == 0 or epoch == epochs - 1:
+                    if self.u_analytic is not None:
+                        print(f"Epoch {epoch}, Loss: {loss.item():.6f}, MSE: {self.mse():.6f}")
+                    else:
+                        print(f"Epoch {epoch}, Loss: {loss.item():.6f}")
