@@ -111,8 +111,11 @@ class heat_1d_nn():
         u_t = torch.autograd.grad(u, t, grad_outputs=torch.ones_like(u), create_graph=True)[0]
         u_x = torch.autograd.grad(u, x, grad_outputs=torch.ones_like(u), create_graph=True)[0]
         u_xx = torch.autograd.grad(u_x, x, grad_outputs=torch.ones_like(u), create_graph=True)[0]
+        
+        # right hand side
+        rhs = torch.sin(torch.pi * x)
 
-        return u_t - u_xx  # Heat equation: u_t - u_xx = 0
+        return u_t - 0.1 * u_xx - rhs  # Heat equation: u_t - 0.1 * u_xx = f
 
     # calculate loss
     def loss_fn(self, x_colloc, t_colloc):
