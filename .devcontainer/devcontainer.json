@@ -24,7 +24,12 @@
 				"donjayamanne.vscode-default-python-kernel"
 			]
 		}
-	}
+	},
+
+	"runArgs": [
+		"--memory=12g",
+		"--shm-size=8g"
+	]
 
 	// Configure tool-specific properties.
 	// "customizations": {},
