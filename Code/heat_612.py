@@ -44,7 +44,7 @@ class heat_nn():
         self.time_scale = nn.Parameter(torch.tensor(1.0))
     
     def trial_solution(self, *args):
-        #trial_solution(x,t), different order breaks it
+        # in the format trial_solution(x,t), trial_solution(x,y,z,t) etc., different order breaks it
         L=1
         if args:
             t = args[-1]
@@ -119,13 +119,19 @@ class heat_nn():
     def set_analytic_solution(self, u_analytic):
         self.u_analytic = u_analytic
     
-    def mse(self):
+    def mse(self, *args):
         if self.u_analytic is None:
             raise ValueError("Analytic solution not set. Use set_analytic_solution method to set it.")
 
+        if args:
+            t = args[-1]
+            x = list(args[:-1])
+        else:
+            t = self.t
+            x = self.x
         with torch.no_grad():
-            u_pred = self.trial_solution().detach().numpy()
-            u_exact = self.u_analytic(*self.x, self.t).detach().numpy()
+            u_pred = self.trial_solution(*x, t).detach().numpy()
+            u_exact = self.u_analytic(*x, t).detach().numpy()
             mse = np.mean((u_pred - u_exact)**2)
         
         return mse
@@ -151,7 +157,7 @@ class heat_nn():
                 else:
                     print(f"Epoch {epoch}, Loss: {loss.item():.6f}")
 
-    def train_lbfgs(self, lr, opt_time_scale = True, epochs=50, max_iter = 50):
+    def train_lbfgs(self, lr, opt_time_scale = True, epochs=50, max_iter = 50, print_epochs = 1):
         if opt_time_scale:
             parameters = list(self.net.parameters()) + [self.time_scale]
         else:
@@ -166,4 +172,9 @@ class heat_nn():
                 return loss
 
             optimizer.step(closure)
-            print(f"LBFGS Epoch {epoch+1}, Loss: {closure().item():.6f}")
+            if print_epochs != 0:
+                if epoch % print_epochs == 0 or epoch == epochs - 1:
+                    if self.u_analytic is not None:
+                        print(f"Epoch {epoch}, Loss: {closure().item():.6f}, MSE: {self.mse():.6f}")
+                    else:
+                        print(f"Epoch {epoch}, Loss: {closure().item():.6f}")
