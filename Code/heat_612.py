@@ -42,6 +42,7 @@ class heat_nn():
         self.kappa = kappa
         self.rhs = rhs
         self.time_scale = nn.Parameter(torch.tensor(1.0))
+        self.losses = None
     
     def trial_solution(self, *args):
         # in the format trial_solution(x,t), trial_solution(x,y,z,t) etc., different order breaks it
@@ -176,33 +177,53 @@ class heat_nn():
             error = np.sqrt(integral)
         return error
 
-    def train(self, lr, weight_decay, epochs, opt_time_scale =True, print_epochs = 500):
+    def train(self, lr, weight_decay, epochs, opt_time_scale =True, print_epochs = 500, save_losses=False):
         #weight_decay is for Adam not the same as L2 regularization but it is recommended to use
+
+        #torch.autograd.set_detect_anomaly(True)
+        #helpful for finding the source of nans or infs
+
         if opt_time_scale:
             parameters = list(self.net.parameters()) + [self.time_scale]
         else:
             parameters = list(self.net.parameters())
         
+        if save_losses:
+            losses = []
         optimizer = torch.optim.Adam(parameters, lr=lr, weight_decay = weight_decay)
         for epoch in range(epochs):
             optimizer.zero_grad()
             loss = self.loss_fn()
             loss.backward()
             optimizer.step()
-        
-        if print_epochs != 0:
-            if epoch % print_epochs == 0 or epoch == epochs - 1:
-                if self.u_analytic is not None:
-                    print(f"Epoch {epoch}, Loss: {loss.item():.6f}, MSE: {self.mse():.6f}")
-                else:
-                    print(f"Epoch {epoch}, Loss: {loss.item():.6f}")
 
-    def train_lbfgs(self, lr, opt_time_scale = True, epochs=50, max_iter = 50, print_epochs = 1):
+            if save_losses:
+                losses.append(loss.item())
+        
+            if print_epochs != 0:
+                if epoch % print_epochs == 0 or epoch == epochs - 1:
+                    if self.u_analytic is not None:
+                        print(f"Epoch {epoch}, Loss: {loss.item():.6f}, MSE: {self.mse():.6f}")
+                    else:
+                        print(f"Epoch {epoch}, Loss: {loss.item():.6f}")
+        
+        if save_losses:
+            self.losses = losses
+
+
+    def train_lbfgs(self, lr, opt_time_scale = True, epochs=50, max_iter = 50, print_epochs = 1, save_losses = False):
+
+        #torch.autograd.set_detect_anomaly(True)
+        #helpful for finding the source of nans and infs
+        
         if opt_time_scale:
             parameters = list(self.net.parameters()) + [self.time_scale]
         else:
             parameters = list(self.net.parameters())        
         optimizer = torch.optim.LBFGS(parameters, lr=lr, max_iter = max_iter)
+
+        if save_losses:
+            losses = []
 
         for epoch in range(epochs):
             def closure():
@@ -212,9 +233,19 @@ class heat_nn():
                 return loss
 
             optimizer.step(closure)
+
+            if save_losses:
+                losses.append(self.loss_fn().item())
+
             if print_epochs != 0:
                 if epoch % print_epochs == 0 or epoch == epochs - 1:
                     if self.u_analytic is not None:
                         print(f"Epoch {epoch}, Loss: {closure().item():.6f}, MSE: {self.mse():.6f}")
                     else:
                         print(f"Epoch {epoch}, Loss: {closure().item():.6f}")
+
+        if save_losses:
+            self.losses = losses
+
+
+            
