@@ -52,6 +52,7 @@ class heat_nn():
         else:
             t = self.t
             x = self.x      
+        # scale to symmetric interval
         x_scaled = [2*xx - 1 for xx in x]
         t_scaled = torch.exp(self.time_scale) * t
         N = self.net(torch.cat(x_scaled + [t_scaled], dim=1))
@@ -135,6 +136,45 @@ class heat_nn():
             mse = np.mean((u_pred - u_exact)**2)
         
         return mse
+    
+    def L_infty_error(self, *args):
+        # compute the L^{\infty} norm of the difference between numerical and analytic
+        # solution, i.e., the maximum of the difference
+        if self.u_analytic is None:
+            raise ValueError("Analytic solution not set. Use set_analytic_solution method to set it.")
+        if args:
+            t = args[-1]
+            x = list(args[:-1])
+        else:
+            t = self.t
+            x = self.x
+        with torch.no_grad():
+            u_pred = self.trial_solution(*x, t).detach().numpy()
+            u_exact = self.u_analytic(*x, t).detach().numpy()
+            error = np.max(u_pred - u_exact)
+        return error
+    
+    def L_2_error(self, *args):
+        # compute the L^2 norm of the difference between numerical and analytic
+        # solution, i.e., the sqrt of the integral over time and space domain of
+        # the quared difference
+        if self.u_analytic is None:
+            raise ValueError("Analytic solution not set. Use set_analytic_solution method to set it.")
+        if args:
+            t = args[-1]
+            x = list(args[:-1])
+        else:
+            t = self.t
+            x = self.x
+        with torch.no_grad():
+            u_pred = self.trial_solution(*x, t).detach().numpy()
+            u_exact = self.u_analytic(*x, t).detach().numpy()
+            # use simple Monte Carlo integration to approximate the integral
+            # len(self.t) is the number of points used in spatial and time domain
+            n = len(self.t)
+            integral = np.sum(1/n * (u_pred - u_exact)**2)
+            error = np.sqrt(integral)
+        return error
 
     def train(self, lr, weight_decay, epochs, opt_time_scale =True, print_epochs = 500):
         #weight_decay is for Adam not the same as L2 regularization but it is recommended to use
