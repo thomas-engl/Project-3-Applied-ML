@@ -1,0 +1,64 @@
+standard example with time scale
+Epoch 0, Loss: 89.809654, MSE: 0.204339
+Epoch 50, Loss: 72.093391, MSE: 0.207498
+Epoch 100, Loss: 67.990234, MSE: 0.191626
+Epoch 150, Loss: 65.586662, MSE: 0.184552
+Epoch 200, Loss: 63.919636, MSE: 0.178301
+Epoch 250, Loss: 61.921181, MSE: 0.170960
+Epoch 300, Loss: 60.230637, MSE: 0.164757
+Epoch 350, Loss: 58.655514, MSE: 0.159432
+Epoch 400, Loss: 57.366669, MSE: 0.154655
+Epoch 450, Loss: 56.168549, MSE: 0.149912
+Epoch 500, Loss: 54.977562, MSE: 0.145289
+Epoch 550, Loss: 57.252308, MSE: 0.146465
+Epoch 600, Loss: 49.164711, MSE: 0.123605
+Epoch 650, Loss: 44.038673, MSE: 0.083577
+Epoch 700, Loss: 28.640572, MSE: 0.049039
+Epoch 749, Loss: 9.112324, MSE: 0.012833
+Epoch 0, Loss: 1.643445, MSE: 0.000540
+Epoch 1, Loss: 0.281906, MSE: 0.000021
+Epoch 2, Loss: 0.015762, MSE: 0.000002
+Epoch 3, Loss: 0.003614, MSE: 0.000000
+Epoch 4, Loss: 0.001505, MSE: 0.000000
+Epoch 5, Loss: 0.000793, MSE: 0.000000
+Epoch 6, Loss: 0.000438, MSE: 0.000000
+Epoch 7, Loss: 0.000291, MSE: 0.000000
+Epoch 8, Loss: 0.000210, MSE: 0.000000
+Epoch 9, Loss: 0.000151, MSE: 0.000000
+
+
+L^2 error:         9.491514e-05
+L_^{infty}_error:  0.0002940297
+
+
+standard example without time scale
+
+Epoch 0, Loss: 89.747475, MSE: 0.203240
+Epoch 50, Loss: 71.754509, MSE: 0.207589
+Epoch 100, Loss: 66.244499, MSE: 0.188855
+Epoch 150, Loss: 62.957611, MSE: 0.180720
+Epoch 200, Loss: 60.472851, MSE: 0.171527
+Epoch 250, Loss: 58.336201, MSE: 0.165522
+Epoch 300, Loss: 56.263580, MSE: 0.160139
+Epoch 350, Loss: 54.628319, MSE: 0.158071
+Epoch 400, Loss: 52.961483, MSE: 0.152724
+Epoch 450, Loss: 51.628052, MSE: 0.151111
+Epoch 500, Loss: 50.662498, MSE: 0.147889
+Epoch 550, Loss: 49.253365, MSE: 0.147311
+Epoch 600, Loss: 49.025623, MSE: 0.145284
+Epoch 650, Loss: 47.213993, MSE: 0.143403
+Epoch 700, Loss: 46.359444, MSE: 0.141436
+Epoch 749, Loss: 45.871948, MSE: 0.140532
+Epoch 0, Loss: 4.282771, MSE: 0.003845
+Epoch 1, Loss: 0.200201, MSE: 0.000034
+Epoch 2, Loss: 0.024260, MSE: 0.000002
+Epoch 3, Loss: 0.007012, MSE: 0.000001
+Epoch 4, Loss: 0.003532, MSE: 0.000000
+Epoch 5, Loss: 0.002298, MSE: 0.000000
+Epoch 6, Loss: 0.001695, MSE: 0.000000
+Epoch 7, Loss: 0.001077, MSE: 0.000000
+Epoch 8, Loss: 0.000912, MSE: 0.000000
+Epoch 9, Loss: 0.000669, MSE: 0.000000
+
+L^2 error:         0.0001980147
+L_^{infty}_error:  0.0006401539
