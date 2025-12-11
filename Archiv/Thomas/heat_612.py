@@ -180,7 +180,7 @@ class heat_nn():
             # use simple Monte Carlo integration to approximate the integral
             # len(self.t) is the number of points used in spatial and time domain
             n = len(t)
-            integral = np.sum(1/n * (u_pred - u_exact)**2)
+            integral = 0.2*np.sum(1/n * (u_pred - u_exact)**2)
             error = np.sqrt(integral)
         return error
 
@@ -201,12 +201,13 @@ class heat_nn():
         for epoch in range(epochs):
             optimizer.zero_grad()
             loss = self.loss_fn()
+            
             loss.backward()
             optimizer.step()
 
             if save_losses:
                 losses.append(loss.item())
-        
+
             if print_epochs != 0:
                 if epoch % print_epochs == 0 or epoch == epochs - 1:
                     if self.u_analytic is not None:
@@ -218,7 +219,7 @@ class heat_nn():
             self.losses = losses
 
 
-    def train_lbfgs(self, lr, opt_time_scale = True, epochs=50, max_iter = 50, print_epochs = 1, save_losses = False, damping = True):
+    def train_lbfgs(self, lr, opt_time_scale = True, epochs=50, max_iter = 50, print_epochs = 1, save_losses = False, damping = False):
 
         #torch.autograd.set_detect_anomaly(True)
         #helpful for finding the source of nans and infs
@@ -247,8 +248,14 @@ class heat_nn():
 
             optimizer.step(closure)
 
+
+
             if save_losses:
                 losses.append(self.loss_fn().item())
+
+            if not torch.isfinite(self.loss_fn()):
+                print("break")
+                return -1
 
             if print_epochs != 0:
                 if epoch % print_epochs == 0 or epoch == epochs - 1:

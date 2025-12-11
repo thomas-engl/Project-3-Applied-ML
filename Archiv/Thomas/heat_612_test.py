@@ -34,7 +34,7 @@ class FFNN(nn.Module):
         return x
 
 class heat_nn():
-    def __init__(self, layers, activations, dim, u_0, kappa, rhs):
+    def __init__(self, layers, activations, dim, u_0, kappa, rhs, reg):
         self.u_analytic = None
         self.net = FFNN(layers, activations, dim=dim)
         self.dim = dim
@@ -43,6 +43,7 @@ class heat_nn():
         self.rhs = rhs
         self.time_scale = nn.Parameter(torch.tensor(1.0))
         self.losses = None
+        self.reg = reg
     
     def trial_solution(self, *args):
         # in the format trial_solution(x,t), trial_solution(x,y,z,t) etc., different order breaks it
@@ -91,7 +92,14 @@ class heat_nn():
     def loss_fn(self):
         f = self.pde_residual()
         # print("pde residual computed")
-        return torch.mean(f**2)
+        weight = 0
+        if self.reg != 0:
+            for p in self.net.parameters():
+                weight += torch.sum(p**2)
+            weight *= self.reg
+        print(weight)
+
+        return torch.mean(f**2 + weight)
     
     def set_data(self, *args):
         if len(args) == 1:
@@ -152,7 +160,7 @@ class heat_nn():
         with torch.no_grad():
             u_pred = self.trial_solution(*x, t).detach().numpy()
             u_exact = self.u_analytic(*x, t).detach().numpy()
-            error = np.max(u_pred - u_exact)
+            error = np.max(np.abs(u_pred - u_exact))
         return error
     
     def L_2_error(self, *args):
@@ -172,8 +180,8 @@ class heat_nn():
             u_exact = self.u_analytic(*x, t).detach().numpy()
             # use simple Monte Carlo integration to approximate the integral
             # len(self.t) is the number of points used in spatial and time domain
-            n = len(self.t)
-            integral = np.sum(1/n * (u_pred - u_exact)**2)
+            n = len(t)
+            integral = 0.2*np.sum(1/n * (u_pred - u_exact)**2)
             error = np.sqrt(integral)
         return error
 
@@ -211,7 +219,7 @@ class heat_nn():
             self.losses = losses
 
 
-    def train_lbfgs(self, lr, opt_time_scale = True, epochs=50, max_iter = 50, print_epochs = 1, save_losses = False):
+    def train_lbfgs(self, lr, opt_time_scale = True, epochs=50, max_iter = 50, print_epochs = 1, save_losses = False, damping = False):
 
         #torch.autograd.set_detect_anomaly(True)
         #helpful for finding the source of nans and infs
@@ -219,8 +227,12 @@ class heat_nn():
         if opt_time_scale:
             parameters = list(self.net.parameters()) + [self.time_scale]
         else:
-            parameters = list(self.net.parameters())        
-        optimizer = torch.optim.LBFGS(parameters, lr=lr, max_iter = max_iter)
+            parameters = list(self.net.parameters())
+
+        if damping:        
+            optimizer = torch.optim.LBFGS(parameters, lr=lr, max_iter = max_iter, line_search_fn = "strong_wolfe")
+        else:
+            optimizer = torch.optim.LBFGS(parameters, lr=lr, max_iter = max_iter)
 
         if save_losses:
             losses = []
@@ -230,6 +242,8 @@ class heat_nn():
                 optimizer.zero_grad()
                 loss = self.loss_fn()
                 loss.backward()
+                if damping:
+                    torch.nn.utils.clip_grad_norm_(self.net.parameters(), 1.0)
                 return loss
 
             optimizer.step(closure)
