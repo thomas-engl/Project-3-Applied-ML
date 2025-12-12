@@ -2,9 +2,9 @@
 
 Members: Lars Bosch, Philipp Brückelt and Thomas Engl
 
-This project contains a self written code based on pytorch for a physics-informed neural network (PINN) to solve partial differential equations. We analyze its performance on the one and two dimensional heat equation and compare it to the finite element method (FEM).
+This project contains pytorch code for a physics-informed neural network (PINN) to solve partial differential equations. We use  We analyze its performance on the one and two dimensional heat equation and compare it to the finite element method (FEM).
 
-The used packages can be found in the requirements.txt file and can get installed through 'pip install -r requirements.txt'
+We used a dolphin container and the used packages can be found in the requirements.txt file and can get installed through 'pip install -r requirements.txt'
 
 # Structure:
 
