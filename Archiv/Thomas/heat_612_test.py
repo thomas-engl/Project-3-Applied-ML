@@ -97,6 +97,7 @@ class heat_nn():
             for p in self.net.parameters():
                 weight += torch.sum(p**2)
             weight *= self.reg
+        print(weight)
 
         return torch.mean(f**2 + weight)
     
@@ -201,13 +202,12 @@ class heat_nn():
         for epoch in range(epochs):
             optimizer.zero_grad()
             loss = self.loss_fn()
-            
             loss.backward()
             optimizer.step()
 
             if save_losses:
                 losses.append(loss.item())
-
+        
             if print_epochs != 0:
                 if epoch % print_epochs == 0 or epoch == epochs - 1:
                     if self.u_analytic is not None:
@@ -248,14 +248,8 @@ class heat_nn():
 
             optimizer.step(closure)
 
-
-
             if save_losses:
                 losses.append(self.loss_fn().item())
-
-            if not torch.isfinite(self.loss_fn()):
-                print("break")
-                return -1
 
             if print_epochs != 0:
                 if epoch % print_epochs == 0 or epoch == epochs - 1:
