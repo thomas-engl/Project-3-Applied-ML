@@ -38,10 +38,10 @@ def plots_pinn_pde_complex_rhs(np_seed, torch_seed, times = [0.01,0.1,]):
     pde_nn.t = t_colloc
 
     # gives relatively good results (compared to other parameters, still bad though)
-    pde_nn.train(lr=1e-2, weight_decay=0.0, epochs = 750, opt_time_scale =True, print_epochs=50)
+    pde_nn.train(lr=1e-2, weight_decay=0.0, epochs = 750, opt_time_scale =True, print_epochs=0)
     # LBFGS needs approximately 100 epochs, 30 iterations for kappa = 1
     # if kappa = 0.1, better choose more iterations, less epochs
-    pde_nn.train_lbfgs(lr=1, opt_time_scale = True, epochs=10, max_iter=100, damping = False)
+    pde_nn.train_lbfgs(lr=1, opt_time_scale = True, epochs=10, max_iter=100, print_epochs =0, damping = False)
 
     for t in times:
         x_test = torch.linspace(0,1,100).view(-1,1)
@@ -168,9 +168,9 @@ def epochs_plot(np_seed, torch_seed):
     pde_nn.x = [x_colloc]
     pde_nn.t = t_colloc
     # gives relatively good results (compared to other parameters, still bad though)
-    pde_nn.train(lr=1e-2, weight_decay=0.0, epochs = 750, opt_time_scale =True, save_losses = True, print_epochs=50)
+    pde_nn.train(lr=1e-2, weight_decay=0.0, epochs = 750, opt_time_scale =True, save_losses = True, print_epochs=0)
     losses_adam_first = pde_nn.losses
-    pde_nn.train_lbfgs(lr=1, opt_time_scale = True, epochs=10, max_iter=100, save_losses = True, print_epochs=1, damping = False)
+    pde_nn.train_lbfgs(lr=1, opt_time_scale = True, epochs=10, max_iter=100, save_losses = True, print_epochs=0, damping = False)
     losses_lbfgs_further = pde_nn.losses
     # X-axis for Adam
     x_adam = np.arange(len(losses_adam_first))
