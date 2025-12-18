@@ -4,7 +4,7 @@ Members: Lars Bosch, Philipp Brückelt and Thomas Engl
 
 This project contains pytorch code for a physics-informed neural network (PINN) to solve partial differential equations. We analyze its performance on the one- and two-dimensional heat equation and compare it to the finite element method (FEM).
 
-We used a docker container. The used packages can be found in the requirements.txt file and can be installed through 'pip install -r requirements.txt'
+To run the code we used a docker container. We recommend to open the container in Visual Studio Code, therefore the Docker extension and Docker itself need to be installed. Then the used packages get automatically installed. To run the notebooks, the dolfinx-env must be used.
 
 # Structure:
 
